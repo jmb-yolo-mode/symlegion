@@ -62,23 +62,15 @@ links:
 
 ## Install
 
-Planned:
+```bash
+pip install .
+```
 
-- **Homebrew (tap)**  
-  ```bash
-  brew tap <you>/agentlink
-  brew install agentlink
-  ```
+Or run without installing:
 
-- **AUR (`agentlink-bin`)**  
-  ```bash
-  yay -S agentlink-bin
-  ```
-
-- **Direct download (GitHub Releases)**  
-  Single static binary.
-
-> We’ll wire this up via GoReleaser.
+```bash
+python -m agentlink --help
+```
 
 ---
 
@@ -88,38 +80,37 @@ Planned:
 
 ```bash
 # Initialize in your project
-agentlink init
+python -m agentlink init
 
 # Edit the created .agentlink.yaml to match your needs
 # Create your source file (e.g., CLAUDE.md)
 
 # Sync to create symlinks
-agentlink sync
+python -m agentlink sync
 ```
 
 ### Commands
 
 ```bash
-agentlink init               # create .agentlink.yaml in current directory
-agentlink sync               # create/fix symlinks based on config
-agentlink check              # print status and problems
-agentlink clean              # remove managed symlinks (non-destructive)
-agentlink doctor             # environment + permissions sanity checks
+python -m agentlink init
+python -m agentlink sync
+python -m agentlink check
+python -m agentlink clean
+python -m agentlink doctor
 ```
 
 ### Helpful flags
 
 ```bash
-agentlink sync --dry-run     # show what would change
-agentlink sync --force       # replace wrong/missing links (or -f)
-agentlink --verbose          # detailed output for any command (or -v)
+python -m agentlink sync --dry-run
+python -m agentlink sync --force
+python -m agentlink --verbose sync
 ```
 
 ### Without init (auto-config)
 
 ```bash
-# In a project with .agentlink.yaml
-agentlink sync
+python -m agentlink sync
 ```
 
 What it does:
@@ -200,7 +191,7 @@ Perfect—put a `.agentlink.yaml` in each repo and choose the source you actuall
 Yes. The source is *whatever you want to edit*. The others link to it.
 
 **What happens when a new AI tool comes out?**  
-Just add its expected path to your config. If "SuperCoder AI" expects `.supercoder/prompts/main.md`, add that path and run `agentlink sync`. Directories are created automatically, symlink points to your source file. Zero code changes, zero updates needed.
+Just add its expected path to your config. If "SuperCoder AI" expects `.supercoder/prompts/main.md`, add that path and run `python -m agentlink sync`. Directories are created automatically, symlink points to your source file. Zero code changes, zero updates needed.
 
 **MCP / `.mcp.json`?**  
 Out of scope. Formats differ between tools; symlinking a single JSON to multiple consumers usually doesn't make sense.
