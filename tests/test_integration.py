@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def run(cwd: Path, *args: str):
     env = dict(**__import__("os").environ, PYTHONPATH=str(ROOT))
-    return subprocess.run([sys.executable, "-m", "agentlink", *args], cwd=cwd, capture_output=True, text=True, env=env)
+    return subprocess.run([sys.executable, "-m", "legion", *args], cwd=cwd, capture_output=True, text=True, env=env)
 
 
 def test_init_sync_check_clean(tmp_path: Path):
@@ -15,7 +15,7 @@ def test_init_sync_check_clean(tmp_path: Path):
 
     p = run(tmp_path, "init")
     assert p.returncode == 0
-    assert (tmp_path / ".agentlink.yaml").exists()
+    assert (tmp_path / ".legion.yaml").exists()
 
     p = run(tmp_path, "check")
     assert p.returncode == 1
