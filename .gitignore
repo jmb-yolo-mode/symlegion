@@ -1,9 +1,14 @@
 # Build artifacts
-/agentlink
 
-# AI instruction files  
+# Python artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+
+# AI instruction files
 AGENTS.md
 CLAUDE.md
 
 # Configuration file
-.agentlink.yaml
+.legion.yaml
