@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run
 # /// script
 # requires-python = ">=3.10"
-# dependencies = []
+# dependencies = ["PyYAML>=6.0"]
 # ///
 from __future__ import annotations
 
@@ -13,6 +13,9 @@ import sys
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+from typing import Any, cast
+
+import yaml
 
 VERSION = "dev"
 
@@ -23,7 +26,7 @@ VERSION = "dev"
 
 
 @dataclass
-class Config:
+class LinkGroup:
     source: str
     links: list[str]
 
@@ -38,6 +41,21 @@ class Config:
         self.links = [str(_expand_path(link, config_dir)) for link in self.links]
 
 
+@dataclass
+class Config:
+    groups: list[LinkGroup]
+
+    def validate(self) -> None:
+        if not self.groups:
+            raise ValueError("at least one source group is required")
+        for group in self.groups:
+            group.validate()
+
+    def expand_paths(self, config_dir: Path) -> None:
+        for group in self.groups:
+            group.expand_paths(config_dir)
+
+
 def _expand_path(raw_path: str, base_dir: Path) -> Path:
     path = Path(raw_path).expanduser()
     if not path.is_absolute():
@@ -45,42 +63,39 @@ def _expand_path(raw_path: str, base_dir: Path) -> Path:
     return Path(os.path.abspath(path))
 
 
-def _parse_simple_yaml(text: str) -> dict[str, object]:
-    source = ""
-    links: list[str] = []
-    in_links = False
+def _parse_yaml(text: str) -> list[dict[str, Any]]:
+    data = yaml.safe_load(text)
+    if not isinstance(data, list):
+        raise RuntimeError("root must be a YAML list of source/link groups")
 
-    for raw in text.splitlines():
-        line = raw.split("#", 1)[0].rstrip()
-        if not line.strip():
-            continue
-        if line.startswith("source:"):
-            source = line.split(":", 1)[1].strip()
-            in_links = False
-            continue
-        if line.startswith("links:"):
-            in_links = True
-            inline = line.split(":", 1)[1].strip()
-            if inline.startswith("[") and inline.endswith("]"):
-                items = [
-                    x.strip().strip("'\"") for x in inline[1:-1].split(",") if x.strip()
-                ]
-                links.extend(items)
-                in_links = False
-            continue
-        if in_links and line.lstrip().startswith("-"):
-            links.append(line.split("-", 1)[1].strip())
+    for index, group in enumerate(data, start=1):
+        if not isinstance(group, dict):
+            raise RuntimeError(f"group {index} must be a mapping")
 
-    return {"source": source, "links": links}
+    return cast(list[dict[str, Any]], data)
+
+
+def _load_groups(data: list[dict[str, Any]]) -> list[LinkGroup]:
+    return [
+        LinkGroup(
+            source=str(group.get("source", "")),
+            links=list(cast(list[str], group.get("links", []))),
+        )
+        for group in data
+    ]
 
 
 def load_config(path: Path) -> Config:
     try:
-        data = _parse_simple_yaml(path.read_text(encoding="utf-8"))
+        data = _parse_yaml(path.read_text(encoding="utf-8"))
     except OSError as exc:
         raise RuntimeError(f"failed to read config file {path}: {exc}") from exc
+    except yaml.YAMLError as exc:
+        raise RuntimeError(f"invalid YAML in {path}: {exc}") from exc
+    except RuntimeError as exc:
+        raise RuntimeError(f"invalid config in {path}: {exc}") from exc
 
-    cfg = Config(source=str(data.get("source", "")), links=list(data.get("links", [])))
+    cfg = Config(groups=_load_groups(data))
     try:
         cfg.validate()
     except ValueError as exc:
@@ -103,16 +118,16 @@ def create_default_global_config(path: Path) -> None:
         """# Symlegion global configuration
 # This file was auto-created. Uncomment and modify as needed.
 
-# Example: Use a file in your Claude config as source
-# source: ~/.config/claude/CLAUDE.md
-# links:
-#   - ~/.config/opencode/AGENTS.md
-#   - ~/.config/some-tool/INSTRUCTIONS.md
+# Example with one source group:
+# - source: ~/.config/claude/CLAUDE.md
+#   links:
+#     - ~/.config/opencode/AGENTS.md
+#     - ~/.config/some-tool/INSTRUCTIONS.md
 
-source: ~/.config/symlegion/INSTRUCTIONS.md
-links:
-  - ~/.config/symlegion/CLAUDE.md
-  - ~/.config/symlegion/AGENTS.md
+- source: ~/.config/symlegion/INSTRUCTIONS.md
+  links:
+    - ~/.config/symlegion/CLAUDE.md
+    - ~/.config/symlegion/AGENTS.md
 """,
         encoding="utf-8",
     )
@@ -120,14 +135,17 @@ links:
 
 def create_project_config(path: Path) -> None:
     path.write_text(
-        """# Choose the file you actually edit as the source:
-source: CLAUDE.md
-links:
-  - AGENTS.md                    # Root level
-  - OPENCODE.md                  # Root level
-  # - .agent/AGENTS.md           # Inside .agent directory
-  # - .codex/instructions.md     # Different name and location
-  # - config/ai/GEMINI.md        # Nested directories
+        """# Choose one or more source groups to manage.
+- source: CLAUDE.md
+  links:
+    - AGENTS.md                    # Root level
+    - OPENCODE.md                  # Root level
+    # - .agent/AGENTS.md           # Inside .agent directory
+    # - .codex/instructions.md     # Different name and location
+    # - config/ai/GEMINI.md        # Nested directories
+# - source: docs/instructions
+#   links:
+#     - .ai/instructions
 """,
         encoding="utf-8",
     )
@@ -163,13 +181,17 @@ class Manager:
 
     def validate_source(self, source_path: Path) -> None:
         if not source_path.exists() and not source_path.is_symlink():
-            raise RuntimeError(f"source file {source_path} does not exist")
+            raise RuntimeError(f"source path {source_path} does not exist")
         if source_path.is_symlink() and not self.force:
             raise RuntimeError(
-                f"source file {source_path} is a symlink (use --force to override)"
+                f"source path {source_path} is a symlink (use --force to override)"
             )
-        if not source_path.is_file() and not source_path.is_symlink():
-            raise RuntimeError(f"source file {source_path} is not a regular file")
+        if (
+            not source_path.is_file()
+            and not source_path.is_dir()
+            and not source_path.is_symlink()
+        ):
+            raise RuntimeError(f"source path {source_path} must be a file or directory")
 
     def check_link(self, link_path: Path, expected_target: Path) -> LinkInfo:
         info = LinkInfo(path=link_path, expected_path=expected_target)
@@ -200,7 +222,7 @@ class Manager:
             return
         link_path.parent.mkdir(parents=True, exist_ok=True)
         rel_target = Path(os.path.relpath(target_path, link_path.parent))
-        link_path.symlink_to(rel_target)
+        link_path.symlink_to(rel_target, target_is_directory=target_path.is_dir())
 
     def remove_link(self, link_path: Path, expected_target: Path) -> None:
         if self.dry_run:
@@ -371,20 +393,22 @@ def _run_sync(args: argparse.Namespace) -> int:
         _info(f"Using {'project' if is_project else 'global'} config: {config_path}")
 
     manager = Manager(args.dry_run, args.force, args.verbose)
-    try:
-        manager.validate_source(Path(cfg.source))
-    except RuntimeError as exc:
-        _error(f"Source validation failed: {exc}")
-        return 1
-
-    _ok(f"Source: {cfg.source}")
     has_errors = False
-    for link in cfg.links:
+    for group in cfg.groups:
         try:
-            _process_link(manager, Path(link), Path(cfg.source), args.verbose)
+            manager.validate_source(Path(group.source))
         except RuntimeError as exc:
             has_errors = True
-            _error(f"Failed to process {link}: {exc}")
+            _error(f"Source validation failed for {group.source}: {exc}")
+            continue
+
+        _ok(f"Source: {group.source}")
+        for link in group.links:
+            try:
+                _process_link(manager, Path(link), Path(group.source), args.verbose)
+            except RuntimeError as exc:
+                has_errors = True
+                _error(f"Failed to process {link}: {exc}")
 
     if args.dry_run:
         _info("Dry run completed - no changes made")
@@ -405,33 +429,37 @@ def _run_check(args: argparse.Namespace) -> int:
     cfg = load_config(config_path)
     manager = Manager(False, False, args.verbose)
 
-    source_status = "OK"
     has_problems = False
-    try:
-        manager.validate_source(Path(cfg.source))
-    except RuntimeError as exc:
-        source_status = f"ERROR: {exc}"
-        has_problems = True
-
-    print(f"Source: {cfg.source} [{source_status}]")
-    print("Links:")
-
-    max_len = max((len(link) for link in cfg.links), default=0)
-    for link in cfg.links:
-        info = manager.check_link(Path(link), Path(cfg.source))
-        if info.status != LinkStatus.OK:
+    for index, group in enumerate(cfg.groups, start=1):
+        source_status = "OK"
+        try:
+            manager.validate_source(Path(group.source))
+        except RuntimeError as exc:
+            source_status = f"ERROR: {exc}"
             has_problems = True
-        print(f"  {link:<{max_len}} -> ", end="")
-        if info.status == LinkStatus.OK:
-            print(f"{cfg.source} ✓")
-        elif info.status == LinkStatus.MISSING:
-            print("missing")
-        elif info.status == LinkStatus.WRONG_TARGET:
-            print(f"{info.target} (expected {cfg.source}) ✗")
-        elif info.status == LinkStatus.NOT_SYMLINK:
-            print("not a symlink ✗")
-        else:
-            print("broken ✗")
+
+        print(f"Source: {group.source} [{source_status}]")
+        print("Links:")
+
+        max_len = max((len(link) for link in group.links), default=0)
+        for link in group.links:
+            info = manager.check_link(Path(link), Path(group.source))
+            if info.status != LinkStatus.OK:
+                has_problems = True
+            print(f"  {link:<{max_len}} -> ", end="")
+            if info.status == LinkStatus.OK:
+                print(f"{group.source} ✓")
+            elif info.status == LinkStatus.MISSING:
+                print("missing")
+            elif info.status == LinkStatus.WRONG_TARGET:
+                print(f"{info.target} (expected {group.source}) ✗")
+            elif info.status == LinkStatus.NOT_SYMLINK:
+                print("not a symlink ✗")
+            else:
+                print("broken ✗")
+
+        if index < len(cfg.groups):
+            print()
 
     if has_problems:
         print("\nFound problems. Run 'symlegion sync' to fix them.")
@@ -450,26 +478,27 @@ def _run_clean(args: argparse.Namespace) -> int:
     cfg = load_config(config_path)
     manager = Manager(args.dry_run, args.force, args.verbose)
 
-    _info(f"Source: {cfg.source} (will NOT be removed)")
     removed = 0
     skipped = 0
 
-    for link in cfg.links:
-        link_path = Path(link)
-        info = manager.check_link(link_path, Path(cfg.source))
-        if info.status == LinkStatus.OK:
-            manager.remove_link(link_path, Path(cfg.source))
-            _ok(f"Removed {link}")
-            removed += 1
-        elif info.status == LinkStatus.BROKEN:
-            if not args.dry_run:
-                link_path.unlink(missing_ok=True)
-            _ok(f"Removed broken symlink {link}")
-            removed += 1
-        else:
-            skipped += 1
-            if args.verbose:
-                _skip(f"Skipped {link}")
+    for group in cfg.groups:
+        _info(f"Source: {group.source} (will NOT be removed)")
+        for link in group.links:
+            link_path = Path(link)
+            info = manager.check_link(link_path, Path(group.source))
+            if info.status == LinkStatus.OK:
+                manager.remove_link(link_path, Path(group.source))
+                _ok(f"Removed {link}")
+                removed += 1
+            elif info.status == LinkStatus.BROKEN:
+                if not args.dry_run:
+                    link_path.unlink(missing_ok=True)
+                _ok(f"Removed broken symlink {link}")
+                removed += 1
+            else:
+                skipped += 1
+                if args.verbose:
+                    _skip(f"Skipped {link}")
 
     if args.dry_run:
         _info(

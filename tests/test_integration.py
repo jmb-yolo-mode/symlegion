@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -7,7 +8,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def run(cwd: Path, *args: str):
-    env = dict(**__import__("os").environ, PYTHONPATH=str(ROOT))
+    env = dict(os.environ)
+    env["PYTHONPATH"] = str(ROOT)
     return subprocess.run(
         [sys.executable, "-m", "symlegion", *args],
         cwd=cwd,
@@ -42,3 +44,29 @@ def test_init_sync_check_clean(tmp_path: Path):
     p = run(tmp_path, "--dry-run", "clean")
     assert p.returncode == 0
     assert "would remove" in p.stdout
+
+
+def test_sync_multiple_groups_with_directory_source(tmp_path: Path):
+    (tmp_path / ".git").mkdir()
+    (tmp_path / "bundle").mkdir()
+    (tmp_path / "bundle" / "rules.md").write_text("hi", encoding="utf-8")
+    (tmp_path / "CLAUDE.md").write_text("hello", encoding="utf-8")
+    (tmp_path / ".symlegion.yaml").write_text(
+        """- source: CLAUDE.md
+  links:
+    - AGENTS.md
+- source: bundle
+  links:
+    - .ai/rules
+""",
+        encoding="utf-8",
+    )
+
+    p = run(tmp_path, "sync")
+    assert p.returncode == 0
+    assert (tmp_path / "AGENTS.md").is_symlink()
+    assert (tmp_path / ".ai" / "rules").is_symlink()
+
+    p = run(tmp_path, "check")
+    assert p.returncode == 0
+    assert p.stdout.count("Source:") == 2

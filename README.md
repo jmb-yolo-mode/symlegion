@@ -27,35 +27,39 @@ Creating instruction files is easy with `/init` commands, but keeping them up to
 
 ## How it works
 
-You tell Symlegion which file is the **source**, and which other files should **link** to it. Symlegion creates/fixes symlinks accordingly.
+You tell Symlegion which file or folder is the **source**, and which other paths should **link** to it. Symlegion creates/fixes symlinks accordingly.
 
 ```yaml
 # .symlegion.yaml (in project root)
-source: CLAUDE.md
-links:
-  - AGENTS.md                              # OpenCode, Codex
-  - .github/copilot-instructions.md       # GitHub Copilot  
-  - .cursorrules                           # Cursor AI
-  - GEMINI.md                              # Gemini CLI
+- source: CLAUDE.md
+  links:
+    - AGENTS.md                          # OpenCode, Codex
+    - .github/copilot-instructions.md    # GitHub Copilot
+    - .cursorrules                       # Cursor AI
+    - GEMINI.md                          # Gemini CLI
+- source: prompts/shared
+  links:
+    - .ai/prompts                        # Folder symlink
 ```
 
 Result:
 ```
-./CLAUDE.md                              # real file you edit
-./AGENTS.md                           -> CLAUDE.md  (symlink)
-./.github/copilot-instructions.md     -> ../CLAUDE.md  (symlink)
-./.cursorrules                        -> CLAUDE.md  (symlink)
-./GEMINI.md                           -> CLAUDE.md  (symlink)
+./CLAUDE.md                           # real file you edit
+./AGENTS.md                           -> CLAUDE.md          (symlink)
+./.github/copilot-instructions.md     -> ../CLAUDE.md       (symlink)
+./.cursorrules                        -> CLAUDE.md          (symlink)
+./GEMINI.md                           -> CLAUDE.md          (symlink)
+./.ai/prompts                         -> ../prompts/shared  (symlink dir)
 ```
 
 Global mode (in HOME) is the same idea:
 
 ```yaml
 # ~/.config/symlegion/config.yaml
-source: ~/.config/claude/CLAUDE.md
-links:
-  - ~/.config/opencode/AGENTS.md
-  - ~/.config/some-tool/INSTRUCTIONS.md
+- source: ~/.config/claude/CLAUDE.md
+  links:
+    - ~/.config/opencode/AGENTS.md
+    - ~/.config/some-tool/INSTRUCTIONS.md
 ```
 
 ---
@@ -115,7 +119,7 @@ symlegion sync
 
 What it does:
 - Reads `.symlegion.yaml` in CWD.
-- Creates/fixes symlinks listed under `links:` so they point to `source`.
+- Creates/fixes symlinks listed under each group so they point to that group's `source`.
 
 If there's **no** `.symlegion.yaml` in CWD:
 - Falls back to `~/.config/symlegion/config.yaml` (global).
@@ -131,23 +135,26 @@ Place a single file at repo root:
 
 `.symlegion.yaml`
 ```yaml
-source: CLAUDE.md
-links:
-  - AGENTS.md
-  - OPENCODE.md
+- source: CLAUDE.md
+  links:
+    - AGENTS.md
+    - OPENCODE.md
+- source: prompts/shared
+  links:
+    - .ai/prompts
 ```
 
 Notes:
-- **`source` must be a real file**, not a symlink (Symlegion warns if it is).
+- Each `source` can be a real file or a real folder, but not a symlink unless you use `--force`.
 - Paths in `links` are relative to the project root.
 
 ### Global config
 
 `~/.config/symlegion/config.yaml`
 ```yaml
-source: ~/.config/claude/CLAUDE.md
-links:
-  - ~/.config/opencode/AGENTS.md
+- source: ~/.config/claude/CLAUDE.md
+  links:
+    - ~/.config/opencode/AGENTS.md
 ```
 
 ---
@@ -191,7 +198,7 @@ Perfect—put a `.symlegion.yaml` in each repo and choose the source you actuall
 Yes. The source is *whatever you want to edit*. The others link to it.
 
 **What happens when a new AI tool comes out?**  
-Just add its expected path to your config. If "SuperCoder AI" expects `.supercoder/prompts/main.md`, add that path and run `symlegion sync`. Directories are created automatically, symlink points to your source file. Zero code changes, zero updates needed.
+Just add its expected path to your config. If "SuperCoder AI" expects `.supercoder/prompts/main.md`, add that path and run `symlegion sync`. Directories are created automatically, and the symlink points to your chosen file or folder source. Zero code changes, zero updates needed.
 
 **MCP / `.mcp.json`?**  
 Out of scope. Formats differ between tools; symlinking a single JSON to multiple consumers usually doesn't make sense.
