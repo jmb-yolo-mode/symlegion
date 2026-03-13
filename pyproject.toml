@@ -1,16 +1,44 @@
+[project]
+name = "symlegion"
+version = "0.1.0"
+description = "Keep AI instruction files in sync using symlinks"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Martin Mose Facondini" },
+]
+keywords = ["ai", "cli", "instructions", "symlink", "tooling"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Software Development :: Version Control",
+    "Topic :: Utilities",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/jmb-yolo-mode/symlegion"
+Repository = "https://github.com/jmb-yolo-mode/symlegion"
+Issues = "https://github.com/jmb-yolo-mode/symlegion/issues"
+
+[project.scripts]
+symlegion = "symlegion:main"
+
+[tool.setuptools]
+py-modules = ["symlegion"]
+
 [build-system]
 requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
-
-[project]
-name = "legion"
-version = "0.1.0"
-description = "Keep AI instruction files in sync using symlinks"
-requires-python = ">=3.10"
-dependencies = []
-
-[project.scripts]
-legion = "legion.cli:main"
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]

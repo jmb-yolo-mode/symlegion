@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from legion.symlink import LinkStatus, Manager
+from symlegion import LinkStatus, Manager
 
 
 def test_check_and_fix_link(tmp_path: Path):

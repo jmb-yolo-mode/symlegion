@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from legion.config import Config, find_config_path, load_config
+from symlegion import Config, find_config_path, load_config
 
 
 def test_load_config(tmp_path: Path):
@@ -19,7 +19,9 @@ def test_find_config_path(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     path, is_project = find_config_path()
     assert not is_project
-    (tmp_path / ".legion.yaml").write_text("source: a\nlinks: [b]\n", encoding="utf-8")
+    (tmp_path / ".symlegion.yaml").write_text(
+        "source: a\nlinks: [b]\n", encoding="utf-8"
+    )
     path, is_project = find_config_path()
     assert is_project
-    assert path == (tmp_path / ".legion.yaml").resolve()
+    assert path == (tmp_path / ".symlegion.yaml").resolve()
