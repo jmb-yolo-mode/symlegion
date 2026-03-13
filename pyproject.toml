@@ -26,7 +26,7 @@ classifiers = [
     "Topic :: Software Development :: Version Control",
     "Topic :: Utilities",
 ]
-dependencies = []
+dependencies = ["PyYAML>=6.0"]
 
 [project.urls]
 Homepage = "https://github.com/jmb-yolo-mode/symlegion"
