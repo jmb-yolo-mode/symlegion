@@ -29,6 +29,9 @@ Creating instruction files is easy with `/init` commands, but keeping them up to
 
 You tell Symlegion which file or folder is the **source**, and which other paths should **link** to it. Symlegion creates/fixes symlinks accordingly.
 
+- `mode: direct` is the original behavior and the default.
+- `mode: recursive` searches multiple roots for matching projects and creates links inside each match.
+
 ```yaml
 # .symlegion.yaml (in project root)
 - source: CLAUDE.md
@@ -93,6 +96,8 @@ symlegion init
 symlegion sync
 ```
 
+`init` creates a starter `.symlegion.yaml` with both `direct` and `recursive` examples.
+
 ### Commands
 
 ```bash
@@ -145,8 +150,47 @@ Place a single file at repo root:
 ```
 
 Notes:
+- Omitting `mode` is the same as `mode: direct`.
 - Each `source` can be a real file or a real folder, but not a symlink unless you use `--force`.
 - Paths in `links` are relative to the project root.
+
+### Direct mode
+
+`direct` is the default mode and matches the original Symlegion behavior.
+
+```yaml
+- mode: direct
+  source: CLAUDE.md
+  links:
+    - AGENTS.md
+    - OPENCODE.md
+```
+
+- `source` can be absolute or relative.
+- Relative `source` and `links` are resolved from the config file directory.
+
+### Recursive mode
+
+Use `recursive` when you want Symlegion to scan one or more parent folders, find matching projects, and create the same symlink layout inside each one.
+
+```yaml
+- mode: recursive
+  source: .opencode/commands/
+  links:
+    - .claude/commands/
+    - .pi/prompts/
+  search:
+    - ~/koofr/workspace/
+    - ~/code/
+  depth: 3
+```
+
+- In recursive mode, `source` and every entry in `links` must be relative paths.
+- `search` entries must be absolute paths, except `~`, which expands to `$HOME`.
+- If `depth` is omitted, Symlegion uses `5`.
+- Symlegion walks each search root down to `depth` levels, looking for `source` in each candidate folder.
+- When it finds a match, it creates every link in `links` relative to that matched folder root.
+- If one or more search paths do not exist, Symlegion prints a warning and continues.
 
 ### Global config
 
