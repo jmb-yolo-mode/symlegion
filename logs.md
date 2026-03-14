@@ -22,3 +22,17 @@
 - 2026-03-13 20:45:53 -0300 | edit | `tests/test_integration.py` resolve merge conflict.
 - 2026-03-13 22:27:59 -0300 | edit | `pyproject.toml` bump version to `0.2.0`.
 - 2026-03-13 22:27:59 -0300 | edit | `symlegion.py` bump CLI version to `0.2.0`.
+- 2026-03-13 23:05:56 -0300 | edit | `symlegion.py` add recursive mode search-based symlink support.
+- 2026-03-13 23:05:56 -0300 | edit | `tests/test_config.py` cover recursive mode loading and direct mode defaults.
+- 2026-03-13 23:05:56 -0300 | edit | `tests/test_integration.py` cover recursive sync and missing search path warnings.
+- 2026-03-13 23:10:20 -0300 | edit | `README.md` document direct and recursive config modes.
+- 2026-03-13 23:11:56 -0300 | edit | `symlegion.py` default recursive depth to `5` and require `mode` instead of `type`.
+- 2026-03-13 23:11:56 -0300 | edit | `tests/test_config.py` cover recursive default depth and reject `type` field.
+- 2026-03-13 23:11:56 -0300 | edit | `README.md` document recursive default depth and remove `type` alias note.
+- 2026-03-13 23:13:08 -0300 | edit | `symlegion.py` fix direct-mode depth defaults and add direct/recursive examples to `init` config.
+- 2026-03-13 23:13:08 -0300 | edit | `tests/test_config.py` switch recursive examples to `mode` only.
+- 2026-03-13 23:13:08 -0300 | edit | `tests/test_integration.py` verify `init` writes both direct and recursive examples.
+- 2026-03-13 23:13:08 -0300 | edit | `README.md` note that `init` includes both config examples.
+- 2026-03-13 23:14:15 -0300 | edit | `pyproject.toml` bump version to `0.3.0`.
+- 2026-03-13 23:14:15 -0300 | edit | `symlegion.py` bump CLI version to `0.3.0`.
+- 2026-03-13 23:15:25 -0300 | edit | `.gitignore` ignore `uv.lock`.
